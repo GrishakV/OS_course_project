@@ -26,32 +26,64 @@ def process_queue():
         except queue.Empty:
             return
         else:
-            print_factors(x, quantum)
+            print_factors(x, quantum, res_list)
 
         time.sleep(1)
 
 
-def print_factors(x, quantum):
+def print_factors(x, quantum, res_list):
     res_str = f'Квант = {idx[x]}с Множители числа {x}: '
+    try:
+        for g in results:
+            res_list = g[x]
+    except KeyError:
+        res_list = []
+    res_dict = {}
+    current_res = []
     st = time.time()
-    for i in range(1, x+1):
+    try:
+        begin = drop_list[x]
+    except KeyError:
+        begin = 1
+    for i in range(begin, x+1):
         current = time.time()
-        if x % i == 0:
-            time.sleep(0.1)
-            res_str += str(i) + ' '
-            # term.insert(END, res_str)
-        if (current - st) > quantum:
-            idx[x] *= 2
-            ps_queue.put(x)
-            res_str = f'Поток числа {x} превысил квант и отправлен обратно в очередь'
-            # term.insert(END, res_str)
-            break
-    print(res_str)
+        if i == x:
+            del idx[x]
+        if quantum < 8.0:
+            if x % i == 0:
+                current_res.append(i)
+            elif (current - st) > quantum:
+                idx[x] *= 2
+                ps_queue.put(x)
+                res_dict[x] = res_list + current_res
+                drop_list[x] = i
+                results[:] = [d for d in results if d.get(x) == x]
+                results.append(res_dict)
+                term.insert(END, f'Поток числа {x} превысил квант и отправлен обратно в очередь \n')
+                break
+        elif quantum == 8.0:
+            if x % i == 0:
+                current_res.append(i)
+            elif (current - st) >= quantum:
+                ps_queue.put(x)
+                res_dict[x] = res_list + current_res
+                drop_list[x] = i
+                results[:] = [d for d in results if d.get(x) == x]
+                results.append(res_dict)
+                term.insert(END, f'Поток числа {x} превысил квант и отправлен обратно в очередь \n')
+                break
+    total_res = res_list + current_res
+    for j in total_res:
+        res_str += str(j) + ' '
+    res_str += '\n'
+    res_str += '-----------------------------------------------------------------\n'
+    term.insert(END, res_str)
 
 
 def entry_get(event):
     global idx, cm_list, ps_queue
     command = en1.get()
+    term.insert(END, f'# {command} \n')
     cm_list.append(command)
     en1.delete(0, 'end')
     if command == 'exit':
@@ -59,7 +91,7 @@ def entry_get(event):
     elif command.startswith('add '):
         parts = command.split(' ', maxsplit=3)
         num = int(parts[1])
-        quant = float(parts[2])
+        quant = float(0.5)
         idx[num] = quant
         ps_queue.put(num)
     elif command == 'clear':
@@ -69,16 +101,26 @@ def entry_get(event):
         thread2 = QueueThread('B')
         thread1.start()
         thread2.start()
-        thread1.join()
-        thread2.join()
-        print('Done.')
     elif command == 'list':
+        term.insert(END, f'Список чисел для выделения множителей \n')
         for i in idx:
-            term.insert(END, '{:>4}: {} \n'.format(i, idx[i]))
+            term.insert(END, f'{i} \n')
+    elif command == 'help':
+        term.insert(END, f'"add ЧИСЛО" - добавляет ЧИСЛО для выделения множетеля из него. \n')
+        term.insert(END, f'"list" - выводит список чисел для выделения множителей. \n')
+        term.insert(END, f'"clear" - очищает терминал. \n')
+        term.insert(END, f'"help" - выводт список команд с кратким описанием. \n')
+        term.insert(END, f'"start" - выделяет множетели из чисел и выводит их в терминал. \n')
+        term.insert(END, f'"exit" - закрывает программу. \n')
+    else:
+        term.insert(END, f'{command} -- неизвестная комманда, используйте "help". \n')
 
 
 if __name__ == '__main__':
-    idx = {4141212: 1.0, 42192: 0.1}
+    idx = {4141212: 0.5, 42192: 0.5}
+    res_list = []
+    results = []
+    drop_list = {}
     cm_list = []
     ps_queue = queue.Queue()
     for x in idx:
@@ -96,7 +138,6 @@ if __name__ == '__main__':
     term = Text(bg='white', width=65, height=19)
 
     en1.bind('<Return>', entry_get)
-    en1.bind('<Button-1>', lambda x: print(idx))
 
     lb1.grid(row=0, column=0, sticky=W, pady=10, padx=5)
     lb2.grid(row=1, column=1, sticky=W)
@@ -104,4 +145,3 @@ if __name__ == '__main__':
     term.grid(row=2, column=0, columnspan=2, padx=20, pady=10)
 
     root.mainloop()
-
