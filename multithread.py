@@ -5,60 +5,6 @@ from tkinter import *
 import queue
 import threading
 import time
-import sys
-
-
-class UnknownCommandError(Exception):
-
-    def __init__(self, command, message="Unknown command"):
-        self.command = command
-        self.message = message
-        super(UnknownCommandError, self).__init__(message)
-
-    def __str__(self):
-        return f"{self.command} -> {self.message}"
-
-
-class InputThread(threading.Thread):
-    def __init__(self, name):
-        threading.Thread.__init__(self)
-        self.name = name
-
-    def run(self) -> None:
-        print(f'Старт потока {self.name}')
-        mult_input()
-        print(f'Завершение потока {self.name}')
-
-
-def mult_input():
-    while True:
-        try:
-            command = input(">>> ").lower()
-
-            if command == 'exit':
-                break
-
-            elif command.startswith('add '):
-                parts = command.split()
-
-
-            elif command == 'start':
-                thread1 = QueueThread('A')
-                thread2 = QueueThread('B')
-
-                thread1.start()
-                thread2.start()
-
-                thread1.join()
-                thread2.join()
-
-                print('Done.')
-
-            else:
-                raise UnknownCommandError(command)
-
-        except Exception as exc:
-            print(exc, file=sys.stderr)
 
 
 class QueueThread(threading.Thread):
@@ -93,29 +39,69 @@ def print_factors(x, quantum):
         if x % i == 0:
             time.sleep(0.1)
             res_str += str(i) + ' '
+            # term.insert(END, res_str)
         if (current - st) > quantum:
             idx[x] *= 2
             ps_queue.put(x)
             res_str = f'Поток числа {x} превысил квант и отправлен обратно в очередь'
+            # term.insert(END, res_str)
             break
-
     print(res_str)
 
 
-if __name__ == '__main__':
-    # idx = list(map(int, input("Введите список чисел для проверки:").split(' ')))
-    idx = {1: 0.5, 3: 0.5, 11: 0.5, 19: 0.5, 33: 0.5, 57: 0.5, 131: 0.5, 209: 0.5,
-           393: 0.5, 627: 0.5, 1441: 0.5, 2489: 0.5, 4323: 0.5, 7467: 0.5, 27379: 0.5, 82137: 0.5}
+def entry_get(event):
+    global idx, cm_list, ps_queue
+    command = en1.get()
+    cm_list.append(command)
+    en1.delete(0, 'end')
+    if command == 'exit':
+        root.destroy()
+    elif command.startswith('add '):
+        parts = command.split(' ', maxsplit=3)
+        num = int(parts[1])
+        quant = float(parts[2])
+        idx[num] = quant
+        ps_queue.put(num)
+    elif command == 'clear':
+        term.delete(0.0, END)
+    elif command == 'start':
+        thread1 = QueueThread('A')
+        thread2 = QueueThread('B')
+        thread1.start()
+        thread2.start()
+        thread1.join()
+        thread2.join()
+        print('Done.')
+    elif command == 'list':
+        for i in idx:
+            term.insert(END, '{:>4}: {} \n'.format(i, idx[i]))
 
+
+if __name__ == '__main__':
+    idx = {4141212: 1.0, 42192: 0.1}
+    cm_list = []
     ps_queue = queue.Queue()
     for x in idx:
         ps_queue.put(x)
 
-    main_thread = InputThread('ввода')
+    root = Tk()
 
-    main_thread.start()
+    root.geometry('570x400')
+    root.title("Подсистема управления процессами с переменной длительностью кванта")
+    root.resizable(False, False)
 
-    main_thread.join()
+    lb1 = Label(text='Командная срока', width=0)
+    lb2 = Label(text='Терминал', width=0)
+    en1 = Entry(width=68)
+    term = Text(bg='white', width=65, height=19)
 
-    # root = Tk()
-    # root.mainloop()
+    en1.bind('<Return>', entry_get)
+    en1.bind('<Button-1>', lambda x: print(idx))
+
+    lb1.grid(row=0, column=0, sticky=W, pady=10, padx=5)
+    lb2.grid(row=1, column=1, sticky=W)
+    en1.grid(row=0, column=1, sticky=W)
+    term.grid(row=2, column=0, columnspan=2, padx=20, pady=10)
+
+    root.mainloop()
+
