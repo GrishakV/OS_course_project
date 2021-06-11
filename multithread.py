@@ -26,13 +26,27 @@ def process_queue():
         except queue.Empty:
             return
         else:
-            print_factors(x, quantum, res_list)
+            print_factors(x, quantum, res_list, quantum_list)
 
         time.sleep(1)
 
 
-def print_factors(x, quantum, res_list):
+def print_factors(x, quantum, res_list, quantum_list):
     res_str = f'Квант = {idx[x]}с Множители числа {x}: '
+    try:
+        for k in quantums:
+            quantum_list = k[x]
+    except KeyError:
+        quantum_list = []
+    quantum_dic = {}
+    quantum_list.append(idx[x])
+    quantum_dic[x] = quantum_list
+    quantums[:] = [d for d in quantums if d.get(x) == x]
+    quantums.append(quantum_dic)
+    try:
+        print(quantums[x])
+    except IndexError:
+        print()
     try:
         for g in results:
             res_list = g[x]
@@ -72,6 +86,12 @@ def print_factors(x, quantum, res_list):
                 results.append(res_dict)
                 term.insert(END, f'Поток числа {x} превысил квант и отправлен обратно в очередь \n')
                 break
+    try:
+        q_sum = sum(quantum_list)
+        term.insert(END, f'Общее время выполнения = {q_sum}с \n')
+    except IndexError:
+        term.insert(END, f'[0.5c]')
+
     total_res = res_list + current_res
     for j in total_res:
         res_str += str(j) + ' '
@@ -106,7 +126,7 @@ def entry_get(event):
         for i in idx:
             term.insert(END, f'{i} \n')
     elif command == 'help':
-        term.insert(END, f'"add ЧИСЛО" - добавляет ЧИСЛО для выделения множетеля из него. \n')
+        term.insert(END, f'"add ЧИСЛО" - добавляет ЧИСЛО для выделени-я множителя из него. \n')
         term.insert(END, f'"list" - выводит список чисел для выделения множителей. \n')
         term.insert(END, f'"clear" - очищает терминал. \n')
         term.insert(END, f'"help" - выводт список команд с кратким описанием. \n')
@@ -118,6 +138,8 @@ def entry_get(event):
 
 if __name__ == '__main__':
     idx = {4141212: 0.5, 42192: 0.5}
+    quantums = []
+    quantum_list = []
     res_list = []
     results = []
     drop_list = {}
